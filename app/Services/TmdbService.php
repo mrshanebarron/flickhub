@@ -10,10 +10,17 @@ class TmdbService
     protected string $baseUrl = 'https://api.themoviedb.org/3';
     protected string $token;
     protected string $imageBase = 'https://image.tmdb.org/t/p/';
+    protected bool $useFallback;
 
     public function __construct()
     {
-        $this->token = config('services.tmdb.token');
+        $this->token = config('services.tmdb.token') ?? '';
+        $this->useFallback = empty($this->token);
+    }
+
+    public function isDemo(): bool
+    {
+        return $this->useFallback;
     }
 
     protected function get(string $endpoint, array $params = []): ?array
@@ -35,32 +42,38 @@ class TmdbService
     // --- Trending ---
     public function trending(string $type = 'all', string $window = 'week'): array
     {
+        if ($this->useFallback) return FallbackData::trending();
         return $this->get("/trending/{$type}/{$window}") ?? ['results' => []];
     }
 
     // --- Movies ---
     public function popularMovies(int $page = 1): array
     {
+        if ($this->useFallback) return FallbackData::popularMovies();
         return $this->get('/movie/popular', ['page' => $page]) ?? ['results' => []];
     }
 
     public function topRatedMovies(int $page = 1): array
     {
+        if ($this->useFallback) return FallbackData::topRatedMovies();
         return $this->get('/movie/top_rated', ['page' => $page]) ?? ['results' => []];
     }
 
     public function upcomingMovies(int $page = 1): array
     {
+        if ($this->useFallback) return FallbackData::upcomingMovies();
         return $this->get('/movie/upcoming', ['page' => $page]) ?? ['results' => []];
     }
 
     public function nowPlayingMovies(int $page = 1): array
     {
+        if ($this->useFallback) return FallbackData::nowPlayingMovies();
         return $this->get('/movie/now_playing', ['page' => $page]) ?? ['results' => []];
     }
 
     public function movie(int $id): ?array
     {
+        if ($this->useFallback) return FallbackData::movieDetail($id);
         return $this->get("/movie/{$id}", [
             'append_to_response' => 'credits,videos,recommendations,reviews',
         ]);
@@ -68,6 +81,7 @@ class TmdbService
 
     public function moviesByGenre(int $genreId, int $page = 1): array
     {
+        if ($this->useFallback) return FallbackData::moviesByGenre($genreId);
         return $this->get('/discover/movie', [
             'with_genres' => $genreId,
             'sort_by' => 'popularity.desc',
@@ -78,16 +92,19 @@ class TmdbService
     // --- TV Shows ---
     public function popularTv(int $page = 1): array
     {
+        if ($this->useFallback) return FallbackData::popularTv();
         return $this->get('/tv/popular', ['page' => $page]) ?? ['results' => []];
     }
 
     public function topRatedTv(int $page = 1): array
     {
+        if ($this->useFallback) return FallbackData::topRatedTv();
         return $this->get('/tv/top_rated', ['page' => $page]) ?? ['results' => []];
     }
 
     public function tvShow(int $id): ?array
     {
+        if ($this->useFallback) return FallbackData::tvDetail($id);
         return $this->get("/tv/{$id}", [
             'append_to_response' => 'credits,videos,recommendations,reviews',
         ]);
@@ -96,12 +113,14 @@ class TmdbService
     // --- Genres ---
     public function movieGenres(): array
     {
+        if ($this->useFallback) return FallbackData::movieGenres();
         $data = $this->get('/genre/movie/list') ?? ['genres' => []];
         return $data['genres'];
     }
 
     public function tvGenres(): array
     {
+        if ($this->useFallback) return FallbackData::tvGenres();
         $data = $this->get('/genre/tv/list') ?? ['genres' => []];
         return $data['genres'];
     }
@@ -109,6 +128,7 @@ class TmdbService
     // --- Search ---
     public function search(string $query, int $page = 1): array
     {
+        if ($this->useFallback) return FallbackData::search($query);
         return $this->get('/search/multi', [
             'query' => $query,
             'page' => $page,
@@ -118,6 +138,7 @@ class TmdbService
     // --- Person ---
     public function person(int $id): ?array
     {
+        if ($this->useFallback) return FallbackData::person($id);
         return $this->get("/person/{$id}", [
             'append_to_response' => 'combined_credits',
         ]);
