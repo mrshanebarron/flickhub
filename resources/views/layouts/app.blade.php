@@ -31,6 +31,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
+    {{-- GSAP --}}
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+
     {{-- Alpine.js --}}
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
@@ -42,9 +46,16 @@
         .scroll-row { display: flex; gap: 0.5rem; overflow-x: auto; scroll-behavior: smooth; padding-bottom: 1rem; scrollbar-width: none; }
         .scroll-row::-webkit-scrollbar { display: none; }
 
+        /* Scroll row navigation arrows */
+        .scroll-row-wrapper { position: relative; }
+        .scroll-row-wrapper .scroll-arrow { position: absolute; top: 0; bottom: 1rem; width: 3rem; z-index: 5; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s; cursor: pointer; }
+        .scroll-row-wrapper:hover .scroll-arrow { opacity: 1; }
+        .scroll-arrow-left { left: 0; background: linear-gradient(to right, #0d0d10 0%, transparent); padding-left: 0.5rem; }
+        .scroll-arrow-right { right: 0; background: linear-gradient(to left, #0d0d10 0%, transparent); padding-right: 0.5rem; }
+
         /* Card hover effect */
-        .card-hover { transition: transform 0.3s ease, box-shadow 0.3s ease; }
-        .card-hover:hover { transform: scale(1.05); z-index: 10; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+        .card-hover { transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.3s ease; }
+        .card-hover:hover { transform: scale(1.08); z-index: 10; box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(230,57,70,0.15); }
 
         /* Star rating */
         .star-rating input[type="radio"] { display: none; }
@@ -56,12 +67,44 @@
         /* Gradient fade for text */
         .text-fade { mask-image: linear-gradient(to bottom, black 60%, transparent); -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent); }
 
-        /* Hero gradient */
-        .hero-gradient { background: linear-gradient(to top, #0d0d10 0%, transparent 60%), linear-gradient(to right, #0d0d10 0%, transparent 40%); }
+        /* Hero gradient — richer, more cinematic */
+        .hero-gradient {
+            background:
+                linear-gradient(to top, #0d0d10 0%, rgba(13,13,16,0.8) 30%, transparent 70%),
+                linear-gradient(to right, #0d0d10 0%, rgba(13,13,16,0.4) 50%, transparent 80%),
+                radial-gradient(ellipse at 20% 80%, rgba(230,57,70,0.08) 0%, transparent 50%);
+        }
+
+        /* Film grain overlay — subtle texture */
+        .film-grain::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+            pointer-events: none;
+            opacity: 0.4;
+            mix-blend-mode: overlay;
+        }
 
         /* Skeleton loading */
         .skeleton { background: linear-gradient(90deg, #1a1a1e 25%, #2d2d31 50%, #1a1a1e 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
         @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        /* Content row reveal animation */
+        .content-section { visibility: visible; }
+
+        /* Subtle glow effect on brand elements */
+        .brand-glow { box-shadow: 0 0 20px rgba(230,57,70,0.15), 0 0 60px rgba(230,57,70,0.05); }
+
+        /* Vignette for hero images */
+        .vignette::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at center, transparent 50%, rgba(13,13,16,0.4) 100%);
+            pointer-events: none;
+            z-index: 1;
+        }
     </style>
     @stack('styles')
 </head>
@@ -126,10 +169,41 @@
                             </div>
                         </div>
                     @else
-                        <a href="{{ route('login') }}" class="text-sm text-surface-300 hover:text-white transition-colors">Sign In</a>
-                        <a href="{{ route('register') }}" class="text-sm px-3 py-1.5 bg-brand-500 hover:bg-brand-600 text-white rounded transition-colors">Join</a>
+                        <a href="{{ route('login') }}" class="hidden sm:inline text-sm text-surface-300 hover:text-white transition-colors">Sign In</a>
+                        <a href="{{ route('register') }}" class="hidden sm:inline text-sm px-3 py-1.5 bg-brand-500 hover:bg-brand-600 text-white rounded transition-colors">Join</a>
                     @endauth
+
+                    {{-- Mobile menu toggle --}}
+                    <button @click="mobileMenu = !mobileMenu" class="md:hidden w-8 h-8 flex items-center justify-center text-surface-400 hover:text-white">
+                        <svg x-show="!mobileMenu" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                        <svg x-show="mobileMenu" x-cloak class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
                 </div>
+            </div>
+        </div>
+
+        {{-- Mobile menu --}}
+        <div x-show="mobileMenu" x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 -translate-y-2" x-transition:enter-end="opacity-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0 -translate-y-2"
+             class="md:hidden bg-surface-950/98 backdrop-blur-lg border-t border-surface-800/50" x-cloak>
+            <div class="max-w-7xl mx-auto px-4 py-4 space-y-1">
+                <a href="{{ route('home') }}" class="block py-2.5 px-3 text-sm rounded-lg {{ request()->routeIs('home') ? 'text-white bg-surface-800' : 'text-surface-300 hover:text-white hover:bg-surface-800/50' }}">Home</a>
+                <a href="{{ route('search', ['q' => '']) }}" class="block py-2.5 px-3 text-sm rounded-lg {{ request()->routeIs('search') ? 'text-white bg-surface-800' : 'text-surface-300 hover:text-white hover:bg-surface-800/50' }}">Browse</a>
+                @auth
+                    <a href="{{ route('watchlist') }}" class="block py-2.5 px-3 text-sm rounded-lg {{ request()->routeIs('watchlist') ? 'text-white bg-surface-800' : 'text-surface-300 hover:text-white hover:bg-surface-800/50' }}">My Watchlist</a>
+                @endauth
+                <form action="{{ route('search') }}" method="GET" class="pt-2">
+                    <input type="text" name="q" placeholder="Search movies, TV shows..."
+                           class="w-full px-4 py-2.5 bg-surface-800 border border-surface-700 rounded-lg text-sm text-white placeholder-surface-500 focus:border-brand-500 focus:outline-none">
+                </form>
+                @guest
+                <div class="flex gap-2 pt-2">
+                    <a href="{{ route('login') }}" class="flex-1 text-center py-2.5 text-sm text-surface-300 border border-surface-700 rounded-lg hover:text-white hover:bg-surface-800">Sign In</a>
+                    <a href="{{ route('register') }}" class="flex-1 text-center py-2.5 text-sm bg-brand-500 hover:bg-brand-600 text-white rounded-lg">Join</a>
+                </div>
+                @endguest
             </div>
         </div>
     </nav>
@@ -186,6 +260,54 @@
             </div>
         </div>
     </footer>
+
+    {{-- GSAP Scroll Animations --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            gsap.registerPlugin(ScrollTrigger);
+
+            // Animate content sections on scroll
+            document.querySelectorAll('.content-section').forEach((section, i) => {
+                const rect = section.getBoundingClientRect();
+                if (rect.top < window.innerHeight) {
+                    // Already in viewport — animate immediately
+                    gsap.fromTo(section,
+                        { autoAlpha: 0, y: 40 },
+                        { autoAlpha: 1, y: 0, duration: 0.8, delay: i * 0.1, ease: 'power2.out' }
+                    );
+                } else {
+                    gsap.fromTo(section,
+                        { autoAlpha: 0, y: 40 },
+                        {
+                            autoAlpha: 1, y: 0, duration: 0.8, ease: 'power2.out',
+                            scrollTrigger: { trigger: section, start: 'top 85%', once: true }
+                        }
+                    );
+                }
+            });
+
+            // Hero parallax — subtle backdrop movement on scroll
+            const heroImg = document.querySelector('.hero-backdrop');
+            if (heroImg) {
+                gsap.to(heroImg, {
+                    yPercent: 15,
+                    ease: 'none',
+                    scrollTrigger: { trigger: heroImg.closest('section'), start: 'top top', end: 'bottom top', scrub: true }
+                });
+            }
+
+            // Scroll row arrow buttons
+            document.querySelectorAll('.scroll-row-wrapper').forEach(wrapper => {
+                const row = wrapper.querySelector('.scroll-row');
+                const leftArrow = wrapper.querySelector('.scroll-arrow-left');
+                const rightArrow = wrapper.querySelector('.scroll-arrow-right');
+                if (row && leftArrow && rightArrow) {
+                    leftArrow.addEventListener('click', () => row.scrollBy({ left: -400, behavior: 'smooth' }));
+                    rightArrow.addEventListener('click', () => row.scrollBy({ left: 400, behavior: 'smooth' }));
+                }
+            });
+        });
+    </script>
 
     @stack('scripts')
 </body>
